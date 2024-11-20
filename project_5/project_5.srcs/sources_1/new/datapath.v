@@ -60,10 +60,55 @@ module datapath (
 	
 	wire [110:0] OutMemory;
 	wire [110:0] InWB;
+
+	pipelineit #(32) FetchToDecode(
+		.i(InstrF),
+		.o(InstrF),
+		.clk(clk)
+	);
+
+	assign OutDecode[31:0] = SrcA;
+	assign OutDecode[63:32] = WriteData;
+	assign OutDecode[95:64] = ExtImm;
+	assign OutDecode[99:96] = InstrD[15:12];
+
+	pipelineit #(100) DecodeToExecute(
+	       .i(OutDecode),
+	       .o(InExecute),
+	       .clk(clk)
+	);
+	
+	assign SrcAE = InExecute[31:0];
+	assign WriteDataE = InExecute[63:32];
+	assign ExtImmE = InExecute[95:64];
+	assign WA3E = InExecute[99:96];
+
+	assign OutExecute[31:0] = ALUResultE;
+	assign OutExecute[63:32] = WriteDataE;
+	assign OutExecute[67:64] = InExecute[99:96];
+	
+	pipelineit # (110) ExecuteToMemory(
+	   	.i(OutExecute),
+	   	.o(InMemory),
+	   	.clk(clk)
+	);
+	
+	assign ALUResultM = InMemory[31:0];
+	assign WriteDataM = InMemory[63:32];
+	
+	assign OutMemory[31:0] = ReadData;
+	assign OutMemory[63:32] = ALUResultM;
+	assign OutMemory[67:64] = InMemory[67:64];
+	
+	pipelineit # (110) MemoryToWriteBack (
+		.i(OutMemory),
+		.o(InWB),
+	   	.clk(clk)
+	);
 	
 	mux2 #(32) pcmux(
 		.d0(PCPlus4),
-		.d1(Result),
+		.d1(ResultW),
 		.s(PCSrc),
 		.y(PCNext)
 	);
@@ -78,7 +123,7 @@ module datapath (
 	adder #(32) pcadd1(
 		.a(PC),
 		.b(32'b100),
-		.y(PCPlus4)
+		.y(PCPlus8)
 	);
 
 	adder #(32) pcadd2(
@@ -105,39 +150,39 @@ module datapath (
 		.we3(RegWrite),
 		.ra1(RA1),
 		.ra2(RA2),
-		.wa3(Instr[15:12]),
-		.wd3(Result),
+		.wa3(InWB[67:64]),
+		.wd3(ResultW),
 		.r15(PCPlus8),
 		.rd1(SrcA),
 		.rd2(WriteData)
 	);
 
 	mux2 #(32) resmux(
-		.d0(ALUResult),
-		.d1(ReadData),
+		.d0(InWB[63:32]),
+		.d1(InWB[31:0]),
 		.s(MemtoReg),
-		.y(Result)
+		.y(ResultW)
 	);
 
 	extend ext(
-		.Instr(Instr[23:0]),
+		.Instr(InstrD[23:0]),
 		.ImmSrc(ImmSrc),
 		.ExtImm(ExtImm)
 	);
 
 	mux2 #(32) srcbmux(
-		.d0(WriteData),
-		.d1(ExtImm),
+		.d0(WriteDataE),
+		.d1(ExtImmE),
 		.s(ALUSrc),
-		.y(SrcB)
+		.y(SrcBE)
 	);
 
 	alu alu(
-		.SrcA(SrcA),
-		.SrcB(SrcB),
-		.ALUControl(ALUControl),
-		.ALUResult(ALUResult),
-		.ALUFlags(ALUFlags)
+		SrcAE,
+		SrcBE,
+		ALUControl,
+		ALUResultE,
+		ALUFlags
 	);
 endmodule
 
