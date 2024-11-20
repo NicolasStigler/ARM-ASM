@@ -9,13 +9,12 @@ module datapath (
 	ALUSrc,
 	ALUControl,
 	MemtoReg,
-	MemWrite,
 	PCSrc,
 	ALUFlags,
 	PC,
-	Instr,
-	ALUResult,
-	WriteData,
+	InstrF,
+	ALUResultM,
+	WriteDataM,
 	ReadData
 );
 	input wire clk;
@@ -26,14 +25,16 @@ module datapath (
 	input wire ALUSrc;
 	input wire [1:0] ALUControl;
 	input wire MemtoReg;
-	input wire MemWrite;
 	input wire PCSrc;
 	output wire [3:0] ALUFlags;
 	output wire [31:0] PC;
-	input wire [31:0] Instr;
-	output wire [31:0] ALUResult;
-	output wire [31:0] WriteData;
-	output wire [31:0] ReadData;
+	input wire [31:0] InstrF;
+	wire [31:0] InstrD;
+	wire [31:0] ALUResultE;
+	output wire [31:0] ALUResultM;
+	output wire [31:0] WriteDataM;
+	wire [31:0] WriteData;
+	input wire [31:0] ReadData;
 
 	wire [31:0] PCNext;
 	wire [31:0] PCPlus4;
@@ -41,10 +42,25 @@ module datapath (
 	wire [31:0] ExtImm;
 	wire [31:0] SrcA;
 	wire [31:0] SrcB;
-	wire [31:0] Result;
+	wire [31:0] ResultW;
 	wire [3:0] RA1;
 	wire [3:0] RA2;
 
+	wire [110:0] OutDecode;
+	wire [110:0] InExecute;
+	wire [31:0] SrcAE;
+	wire [31:0] SrcBE;
+	wire [31:0] ExtImmE;
+	wire [31:0] WriteDataE;
+	wire [3:0] WA3E;
+	wire [31:0] ALUResultE;
+	
+	wire [110:0] OutExecute;
+	wire [110:0] InMemory;
+	
+	wire [110:0] OutMemory;
+	wire [110:0] InWB;
+	
 	mux2 #(32) pcmux(
 		.d0(PCPlus4),
 		.d1(Result),
