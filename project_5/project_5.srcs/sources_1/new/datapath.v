@@ -123,12 +123,5 @@ module datapath (
 		.ALUResult(ALUResult),
 		.ALUFlags(ALUFlags)
 	);
-	memory_unit memory (
-		.clk(clk),
-		.we(MemWrite),
-		.addr(ALUResult),
-		.wdata(WriteData),
-		.rdata(ReadData)
-	);
 endmodule
 
