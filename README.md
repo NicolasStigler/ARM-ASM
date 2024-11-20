@@ -1,1 +1,1 @@
-![ono](https://tenor.com/view/pipeline-bewareofthepipeline-discordmeme-meme-gif-7392248842043426460)
+![ono](https://media.tenor.com/ogsFqg14Y1IAAAAM/fail.gif)
