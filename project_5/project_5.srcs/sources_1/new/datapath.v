@@ -1,41 +1,29 @@
 `timescale 1ns / 1ps
 
 module datapath (
-	clk,
-	reset,
-	RegSrc,
-	RegWrite,
-	ImmSrc,
-	ALUSrc,
-	ALUControl,
-	MemtoReg,
-	PCSrc,
-	ALUFlags,
-	PC,
-	InstrF,
-	ALUResultM,
-	WriteDataM,
-	ReadData
+	input wire clk,
+	input wire reset,
+	input wire [1:0] RegSrc,
+    	input wire RegWrite,
+    	input wire [1:0] ImmSrc,
+	input wire ALUSrc,
+	input wire [1:0] ALUControl,
+	input wire MemtoReg,
+	input wire PCSrc,
+	input wire StallF,
+	input wire FlushD,
+	input wire StallD,
+	input wire FlushE,
+	input wire StallE,
+	input wire FlushM,
+	input wire StallM,
+	output wire [3:0] ALUFlags,
+	output wire [31:0] PC,
+	input wire [31:0] InstrF,
+	output wire [31:0] ALUResultM,
+	output wire [31:0] WriteDataM,
+	input wire [31:0] ReadData
 );
-	input wire clk;
-	input wire reset;
-	input wire [1:0] RegSrc;
-	input wire RegWrite;
-	input wire [1:0] ImmSrc;
-	input wire ALUSrc;
-	input wire [1:0] ALUControl;
-	input wire MemtoReg;
-	input wire PCSrc;
-	output wire [3:0] ALUFlags;
-	output wire [31:0] PC;
-	input wire [31:0] InstrF;
-	wire [31:0] InstrD;
-	wire [31:0] ALUResultE;
-	output wire [31:0] ALUResultM;
-	output wire [31:0] WriteDataM;
-	wire [31:0] WriteData;
-	input wire [31:0] ReadData;
-
 	wire [31:0] PCNext;
 	wire [31:0] PCPlus4;
 	wire [31:0] PCPlus8;
@@ -65,7 +53,8 @@ module datapath (
 		.o(InstrD),
 		.clk(clk),
 		.reset(reset),
-		.stall(StallF)
+		.stall(StallF),
+        	.flush(FlushD)
 	);
 
 	assign OutDecode[31:0] = SrcA;
@@ -73,12 +62,13 @@ module datapath (
 	assign OutDecode[95:64] = ExtImm;
 	assign OutDecode[99:96] = InstrD[15:12];
 
-	pipelineit #(32) DecodeToExecute(
+	pipelineit #(100) DecodeToExecute(
 		.i(OutDecode),
 	       	.o(InExecute),
 	       	.clk(clk),
 		.reset(reset),
-		.stall(StallD)
+		.stall(StallD),
+		.flush(FlushE)
 	);
 	
 	assign SrcAE = InExecute[31:0];
@@ -90,12 +80,13 @@ module datapath (
 	assign OutExecute[63:32] = WriteDataE;
 	assign OutExecute[67:64] = InExecute[99:96];
 	
-	pipelineit #(32) ExecuteToMemory(
+	pipelineit #(110) ExecuteToMemory(
 	   	.i(OutExecute),
 	   	.o(InMemory),
 	   	.clk(clk),
 		.reset(reset),
-		.stall(StallE)
+		.stall(StallE),
+		.flush(FlushM)
 	);
 	
 	assign ALUResultM = InMemory[31:0];
@@ -105,12 +96,13 @@ module datapath (
 	assign OutMemory[63:32] = ALUResultM;
 	assign OutMemory[67:64] = InMemory[67:64];
 	
-	pipelineit #(32) MemoryToWriteBack (
+	pipelineit #(110) MemoryToWriteBack (
 		.i(OutMemory),
 		.o(InWB),
 	   	.clk(clk),
 		.reset(reset),
-		.stall(StallM)
+		.stall(StallM),
+		.flush(1'b0)
 	);
 	
 	mux2 #(32) pcmux(
@@ -130,7 +122,7 @@ module datapath (
 	adder #(32) pcadd1(
 		.a(PC),
 		.b(32'b100),
-		.y(PCPlus8)
+		.y(PCPlus4)
 	);
 
 	adder #(32) pcadd2(
@@ -185,12 +177,12 @@ module datapath (
 	);
 
 	alu alu(
-		SrcAE,
-		SrcBE,
-		ALUControl,
-		ALUResultE,
-		ALUFlags,
-		Saturated
+		.a(SrcAE),
+		.b(SrcBE),
+		.ALUControl(ALUControl),
+		.Result(ALUResultE),
+		.Flags(ALUFlags),
+		.Saturated
 	);
 
 	mux2 #(32) forward_muxA (
@@ -206,5 +198,4 @@ module datapath (
 	    	.s(ForwardBE),
 	    	.y(SrcBE)
 	);
-
 endmodule
