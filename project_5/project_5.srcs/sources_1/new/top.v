@@ -1,17 +1,12 @@
 `timescale 1ns / 1ps
 
 module top (
-	clk,
-	reset,
-	WriteData,
-	DataAdr,
-	MemWrite
-);
 	input wire clk;
 	input wire reset;
 	output wire [31:0] WriteData;
 	output wire [31:0] DataAdr;
 	output wire MemWrite;
+);
 	wire [31:0] PC;
 	wire [31:0] Instr;
 	wire [31:0] ReadData;
@@ -19,10 +14,10 @@ module top (
 		.clk(clk),
 		.reset(reset),
 		.PC(PC),
-		.Instr(Instr),
+		.InstrF(Instr),
 		.MemWrite(MemWrite),
 		.ALUResult(DataAdr),
-		.WriteData(WriteData),
+		.WriteDataM(WriteData),
 		.ReadData(ReadData)
 	);
 	imem imem(
