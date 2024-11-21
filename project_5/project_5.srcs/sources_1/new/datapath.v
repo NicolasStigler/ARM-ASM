@@ -53,7 +53,6 @@ module datapath (
 	wire [31:0] ExtImmE;
 	wire [31:0] WriteDataE;
 	wire [3:0] WA3E;
-	wire [31:0] ALUResultE;
 	
 	wire [110:0] OutExecute;
 	wire [110:0] InMemory;
@@ -65,6 +64,7 @@ module datapath (
 		.i(InstrF),
 		.o(InstrD),
 		.clk(clk),
+		.reset(reset),
 		.stall(StallF)
 	);
 
@@ -73,10 +73,11 @@ module datapath (
 	assign OutDecode[95:64] = ExtImm;
 	assign OutDecode[99:96] = InstrD[15:12];
 
-	pipelineit #(100) DecodeToExecute(
+	pipelineit #(32) DecodeToExecute(
 		.i(OutDecode),
 	       	.o(InExecute),
 	       	.clk(clk),
+		.reset(reset),
 		.stall(StallD)
 	);
 	
@@ -89,10 +90,11 @@ module datapath (
 	assign OutExecute[63:32] = WriteDataE;
 	assign OutExecute[67:64] = InExecute[99:96];
 	
-	pipelineit # (110) ExecuteToMemory(
+	pipelineit #(32) ExecuteToMemory(
 	   	.i(OutExecute),
 	   	.o(InMemory),
 	   	.clk(clk),
+		.reset(reset),
 		.stall(StallE)
 	);
 	
@@ -103,10 +105,11 @@ module datapath (
 	assign OutMemory[63:32] = ALUResultM;
 	assign OutMemory[67:64] = InMemory[67:64];
 	
-	pipelineit # (110) MemoryToWriteBack (
+	pipelineit #(32) MemoryToWriteBack (
 		.i(OutMemory),
 		.o(InWB),
 	   	.clk(clk),
+		.reset(reset),
 		.stall(StallM)
 	);
 	
