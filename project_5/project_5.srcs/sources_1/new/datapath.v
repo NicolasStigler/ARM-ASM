@@ -63,8 +63,9 @@ module datapath (
 
 	pipelineit #(32) FetchToDecode(
 		.i(InstrF),
-		.o(InstrF),
-		.clk(clk)
+		.o(InstrD),
+		.clk(clk),
+		.stall(StallF)
 	);
 
 	assign OutDecode[31:0] = SrcA;
@@ -73,9 +74,10 @@ module datapath (
 	assign OutDecode[99:96] = InstrD[15:12];
 
 	pipelineit #(100) DecodeToExecute(
-	       .i(OutDecode),
-	       .o(InExecute),
-	       .clk(clk)
+		.i(OutDecode),
+	       	.o(InExecute),
+	       	.clk(clk),
+		.stall(StallD)
 	);
 	
 	assign SrcAE = InExecute[31:0];
@@ -90,7 +92,8 @@ module datapath (
 	pipelineit # (110) ExecuteToMemory(
 	   	.i(OutExecute),
 	   	.o(InMemory),
-	   	.clk(clk)
+	   	.clk(clk),
+		.stall(StallE)
 	);
 	
 	assign ALUResultM = InMemory[31:0];
@@ -103,7 +106,8 @@ module datapath (
 	pipelineit # (110) MemoryToWriteBack (
 		.i(OutMemory),
 		.o(InWB),
-	   	.clk(clk)
+	   	.clk(clk),
+		.stall(StallM)
 	);
 	
 	mux2 #(32) pcmux(
@@ -182,7 +186,22 @@ module datapath (
 		SrcBE,
 		ALUControl,
 		ALUResultE,
-		ALUFlags
+		ALUFlags,
+		Saturated
 	);
-endmodule
 
+	mux2 #(32) forward_muxA (
+		.d0(SrcA),
+	    	.d1(ALUResultM),
+	    	.s(ForwardAE),
+	    	.y(SrcAE)
+	);
+	
+	mux2 #(32) forward_muxB (
+	    	.d0(WriteDataE),
+	    	.d1(ALUResultM),
+	    	.s(ForwardBE),
+	    	.y(SrcBE)
+	);
+
+endmodule
