@@ -16,7 +16,7 @@ module controller (
 );
 	input wire clk;
 	input wire reset;
-	input wire [31:12] Instr;
+	input wire [31:0] Instr;
 	input wire [3:0] ALUFlags;
 	output wire [1:0] RegSrc;
 	output wire RegWrite;
@@ -30,6 +30,7 @@ module controller (
 	wire PCS;
 	wire RegW;
 	wire MemW;
+	
 	decode dec(
 		.Op(Instr[27:26]),
 		.Funct(Instr[25:20]),
@@ -44,6 +45,7 @@ module controller (
 		.RegSrc(RegSrc),
 		.ALUControl(ALUControl)
 	);
+	
 	condlogic cl(
 		.clk(clk),
 		.reset(reset),
