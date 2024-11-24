@@ -5,10 +5,13 @@ module pipelineit(
     output wire [31:0] o,
     input wire clk,
     input wire reset,
-    input wire stall
+    input wire stall,
+    input wire flush
 );
     always @(posedge clk or posedge reset) begin
         if (reset)
+            o <= 0;
+        else if (flush)
             o <= 0;
         else if (!stall)
             o <= i;
