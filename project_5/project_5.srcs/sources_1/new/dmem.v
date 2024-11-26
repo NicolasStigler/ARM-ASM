@@ -1,20 +1,22 @@
 `timescale 1ns / 1ps
 
 module dmem (
-	clk,
-	we,
-	a,
-	wd,
-	rd
+	input clk,
+	input we,
+	input [31:0] adr,
+	input [31:0] wd,
+	output [31:0] rd
 );
-	input wire clk;
-	input wire we;
-	input wire [31:0] a;
-	input wire [31:0] wd;
-	output wire [31:0] rd;
-	reg [31:0] RAM [63:0];
-	assign rd = RAM[a[31:2]];
-	always @(posedge clk)
+	reg [31:0] RAM[0:256];
+
+	initial begin
+		$readmemh("memfile.dat", RAM);
+	end
+	
+	assign rd = RAM[adr[12:2]];
+	
+	always @(posedge clk) begin
 		if (we)
-			RAM[a[31:2]] <= wd;
+			RAM[adr[12:2]] <= wd;
+	end
 endmodule
