@@ -21,19 +21,24 @@ module alu (
     
     always @(*) begin
         case (ALUControl)
-            4'b0000: Result = sum_extended[31:0]; // ADD
-            4'b0001: Result = sum_extended[31:0]; // SUB
-            4'b0010: Result = a & b; // AND
-            4'b0011: Result = a | b; // OR
-            4'b0100: Result = a ^ b; // XOR
-            4'b0101: Result = ~(a ^ b); // XNOR
-            4'b0110: Result = a << b[4:0]; // LSL
-            4'b0111: Result = a >> b[4:0]; // LSR
-            4'b1000: Result = a >>> b[4:0]; // ASR
-            4'b1001: Result = {a[0], a[31:1]}; // ROR
-            4'b1010: Result = Saturated ? saturated_sum : sum_extended[31:0]; // QADD
-            4'b1011: Result = Saturated ? saturated_sub : a - b; // QSUB
-            default: Result = 32'b0; // NOP
+        4'b0000: Result = a + b; // ADD
+        4'b0001: Result = a - b; // SUB
+        4'b0010: Result = b - a; // RSB
+        4'b0011: Result = a + b + ALUFlags[1]; // ADC (Add with Carry)
+        4'b0100: Result = a - b - ~ALUFlags[1]; // SBC (Subtract with Carry)
+        4'b0101: Result = b - a - ~ALUFlags[1]; // RSC (Reverse Subtract with Carry)
+        4'b0110: Result = a & b; // AND
+        4'b0111: Result = a | b; // ORR
+        4'b1000: Result = a ^ b; // XOR
+        4'b1001: Result = a & ~b; // BIC (Bit Clear)
+        4'b1010: Result = a | ~b; // ORN (Logical OR NOT)
+        4'b1011: Result = ~b; // MVN (Move NOT)
+        4'b1100: Result = a << b[4:0]; // LSL (Logical Shift Left)
+        4'b1101: Result = a >> b[4:0]; // LSR (Logical Shift Right)
+        4'b1110: Result = a >>> b[4:0]; // ASR (Arithmetic Shift Right)
+        4'b1111: Result = {a[0], a[31:1]}; // ROR (Rotate Right)
+        default: Result = 32'b0; // NOP
+
         endcase
     end
 
