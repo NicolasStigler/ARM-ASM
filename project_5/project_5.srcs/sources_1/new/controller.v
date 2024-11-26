@@ -48,7 +48,7 @@ module controller (
 	flopenr #(10) regE (
 	        .clk(clk),
 	        .reset(reset),
-	        .en(~FlushE),
+	        .flush(FlushE),
 	        .d({PCSrcD, RegWriteD, MemWriteD, MemtoRegD, ALUSrcD, ALUControlD, FlagWriteD}),
         	.q({PCSrcE, RegWriteE, MemWriteE, MemtoRegE, ALUSrcE, ALUControlE, FlagWriteE})
     	);
