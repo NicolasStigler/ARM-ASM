@@ -1,34 +1,40 @@
 `timescale 1ns / 1ps
+`include "arm.v"
+`include "imem.v"
+`include "dmem.v"
 
 module top (
-	input wire clk;
-	input wire reset;
-	output wire [31:0] WriteData;
-	output wire [31:0] DataAdr;
-	output wire MemWrite;
+	input clk;
+	input reset;
+	output [31:0] WriteDataM;
+	output [31:0] DataAdrM;
+	output MemWriteM;
 );
-	wire [31:0] PC;
-	wire [31:0] Instr;
-	wire [31:0] ReadData;
+	wire [31:0] PCF;
+	wire [31:0] InstrF;
+	wire [31:0] ReadDataM;
+	
 	arm arm(
 		.clk(clk),
 		.reset(reset),
-		.PC(PC),
-		.InstrF(Instr),
-		.MemWrite(MemWrite),
-		.ALUResultM(DataAdr),
+		.PCF(PCF),
+		.InstrF(InstrF),
+		.MemWriteM(MemWriteM),
+		.DataAdrM(DataAdrM),
 		.WriteDataM(WriteData),
-		.ReadData(ReadData)
+		.ReadDataM(ReadDataM)
 	);
+	
 	imem imem(
-		.a(PC),
-		.rd(Instr)
+		.PCF(PCF),
+		.InstrF(InstrF)
 	);
+	
 	dmem dmem(
 		.clk(clk),
-		.we(MemWrite),
-		.a(DataAdr),
-		.wd(WriteData),
-		.rd(ReadData)
+		.MemWriteM(MemWriteM),
+		.DataAdrM(DataAdrM),
+		.WriteDataM(WriteDataM),
+		.ReadDataM(ReadDataM)
 	);
 endmodule
