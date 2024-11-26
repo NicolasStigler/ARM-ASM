@@ -1,98 +1,97 @@
 `timescale 1ns / 1ps
+`include "controller.c"
+`include "datapath.v"
 
 module arm (
-	input wire clk;
-	input wire reset;
-	output wire [31:0] PC;
-	input wire [31:0] InstrF;
-	output wire MemWrite;
-	output wire [31:0] ALUResultM;
-	output wire [31:0] WriteDataM;
-	input wire [31:0] ReadData;
+	input clk;
+	input reset;
+	output [31:0] PCF;
+	input [31:0] InstrF;
+	output MemWriteM;
+	output [31:0] ALUResultM;
+	output [31:0] WriteDataM;
+	input [31:0] ReadDataM;
 );
-	wire [3:0] ALUFlags;
-	wire RegWrite;
-	wire ALUSrc;
-	wire MemtoReg;
-	wire PCSrc;
-	wire [1:0] RegSrc;
-	wire [1:0] ImmSrc;
-	wire [1:0] ALUControl;
-
-	wire StallF, StallD, StallE, StallM;
-    	wire FlushD, FlushE, FlushM;
-
+	wire [1:0] RegSrcD;
+	wire [1:0] ImmSrcD;
+	wire [2:0] ALUControlE;
+	wire ALUSrcE, BranchTakenE, MemtoRegW, PCSrcW, RegWriteW;
+	wire [3:0] ALUFlagsE;
+	wire [31:0] InstrD;
+	wire RegWriteM, MemtoRegE, PCWPendingF;
 	wire [1:0] ForwardAE, ForwardBE;
-
-	wire [31:0] InstrD, SrcAE, SrcBE;
-    	wire [31:0] ALUResultE, ExtImmE, WriteDataE;
-    	wire [3:0] WA3E;
-
-	wire BranchPredicted;
-    	wire BranchTaken;
-    	wire FlushBranch;
+	wire StallF, StallD, FlushD, FlushE;
+	wire Check1_EM, Check1_EW, Check2_EM, Check2_EW, Check12_DE;
 	
 	controller c(
 		.clk(clk),
 		.reset(reset),
-		.Instr(InstrD[31:12]),
-		.ALUFlags(ALUFlags),
-		.RegSrc(RegSrc),
-		.RegWrite(RegWrite),
-		.ImmSrc(ImmSrc),
-		.ALUSrc(ALUSrc),
-		.ALUControl(ALUControl),
-		.MemWrite(MemWrite),
-		.MemtoReg(MemtoReg),
-		.PCSrc(PCSrc)
+		.InstrD(InstrD[31:12]),
+		.ALUFlagsE(ALUFlagsE),
+		.RegSrcD(RegSrcD),
+		.ImmSrcD(ImmSrcD),
+		.ALUSrcE(ALUSrcE),
+		.BranchTakenE(BranchTakenE),
+		.ALUControlE(ALUControlE),
+		.MemWriteM(MemWriteM),
+		.MemtoRegW(MemtoRegW),
+		.PCSrcW(PCSrcW),
+		.RegWriteW(RegWriteW),
+		.RegWriteM(RegWriteM), 
+	    	.MemtoRegE(MemtoRegE), 
+	    	.PCWPendingF(PCWPendingF), 
+	    	.FlushE(FlushE)
 	);
-
-	hazard_unit h (
-        	.InstrD(InstrD),
-		.InstrE({InstrD[15:0]}), // todavia podria cambiarlo
-        	.RegWriteE(RegWrite),
-        	.RegWriteM(MemWrite),
-        	.ForwardAE(ForwardAE),
-        	.ForwardBE(ForwardBE),
-        	.StallF(StallF),
-        	.StallD(StallD),
-        	.StallE(StallE),
-        	.FlushD(FlushD),
-        	.FlushE(FlushE)
-    	);
 	
 	datapath dp(
 		.clk(clk),
 		.reset(reset),
-		.RegSrc(RegSrc),
-		.RegWrite(RegWrite),
-		.ImmSrc(ImmSrc),
-		.ALUSrc(ALUSrc),
-		.ALUControl(ALUControl),
-		.MemtoReg(MemtoReg),
-		.PCSrc(PCSrc),
-		.ALUFlags(ALUFlags),
-		.PC(PC),
+		.RegSrcD(RegSrcD),
+		.ImmSrcD(ImmSrcD),
+		.ALUSrcE(ALUSrcE),
+		.BranchTakenE(BranchTakenE),
+		.ALUControlE(ALUControlE),
+		.MemtoRegW(MemtoRegW),
+		.PCSrcW(PCSrcW),
+		.RegWriteW(RegWriteW),
+		.PCF(PCF),
 		.InstrF(InstrF),
+		.InstrD(InstrD),
 		.ALUResultM(ALUResultM),
         	.WriteDataM(WriteDataM),
-        	.ReadData(ReadData),
+		.ReadDataM(ReadDataM),
+		.ALUFlagsE(ALUFlagsE),
+		.Check1_EM(Check1_EM),
+		.Check1_EW(Check1_EW),
+		.Check2_EM(Check2_EM),
+		.Check2_EW(Check2_EW),
+		.Check12_DE(Check12_DE),
+		.ForwardAE(ForwardAE),
+		.ForwardBE(ForwardBE),
         	.StallF(StallF),
-        	.FlushD(FlushD),
         	.StallD(StallD),
-        	.FlushE(FlushE),
-        	.StallE(StallE),
-        	.FlushM(FlushM)
+		.FlushD(FlushD)
 	);
 
-	branch_predictor bp (
-        	.clk(clk),
-        	.reset(reset),
-        	.InstrF(InstrF),
-        	.BranchPredicted(BranchPredicted),
-        	.BranchTaken(BranchTaken),
-        	.FlushBranch(FlushBranch)
+	hazardunit h(
+		.clk(clk), 
+		.reset(reset), 
+		.Check1_EM(Check1_EM),
+		.Check1_EW(Check1_EW),
+		.Check2_EM(Check2_EM),
+		.Check2_EW(Check2_EW),
+		.Check12_DE(Check12_DE),
+	    	.RegWriteM(RegWriteM), 
+	    	.RegWriteW(RegWriteW), 
+	    	.BranchTakenE(BranchTakenE), 
+	    	.MemtoRegE(MemtoRegE),
+	    	.PCWPendingF(PCWPendingF), 
+	    	.PCSrcW(PCSrcW), 
+	    	.ForwardAE(ForwardAE), 
+	    	.ForwardBE(ForwardBE),
+	    	.StallF(StallF), 
+	    	.StallD(StallD), 
+	    	.FlushD(FlushD), 
+	    	.FlushE(FlushE)
     	);
-
-	assign FlushD = FlushBranch;
 endmodule
