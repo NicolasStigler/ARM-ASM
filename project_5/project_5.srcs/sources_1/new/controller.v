@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "deocde.v"
 
 module controller (
 	input wire clk,
