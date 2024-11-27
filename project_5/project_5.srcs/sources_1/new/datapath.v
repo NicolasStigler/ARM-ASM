@@ -1,201 +1,78 @@
 `timescale 1ns / 1ps
 
 module datapath (
-	input wire clk,
-	input wire reset,
-	input wire [1:0] RegSrc,
-    	input wire RegWrite,
-    	input wire [1:0] ImmSrc,
-	input wire ALUSrc,
-	input wire [1:0] ALUControl,
-	input wire MemtoReg,
-	input wire PCSrc,
-	input wire StallF,
-	input wire FlushD,
-	input wire StallD,
-	input wire FlushE,
-	input wire StallE,
-	input wire FlushM,
-	input wire StallM,
-	output wire [3:0] ALUFlags,
-	output wire [31:0] PC,
-	input wire [31:0] InstrF,
-	output wire [31:0] ALUResultM,
-	output wire [31:0] WriteDataM,
-	input wire [31:0] ReadData
+	input clk,
+	input reset,
+	input [1:0] RegSrcD,
+	input [1:0] ImmSrcD,
+	input ALUSrcE,
+	input BranchTakenE,
+	input [2:0] ALUControlE,
+	input MemtoRegW,
+	input PCSrcW,
+	input RegWriteW,
+	output [31:0] PCF,
+	input [31:0] InstrF,
+	output [31:0] InstrD,
+	output [31:0] AluResultM,
+	output [31:0] WriteDataM,
+	input [31:0] ReadDataM,
+	output [3:0] ALUFlagsE,
+	output Check1_EM, Check1_EW, Check2_EM, Check2_EW, Check12_DE,
+	input [1:0] ForwardAE, ForwardBE,
+	input StallF, StallD, FlushD
 );
-	wire [31:0] PCNext;
-	wire [31:0] PCPlus4;
-	wire [31:0] PCPlus8;
-	wire [31:0] ExtImm;
-	wire [31:0] SrcA;
-	wire [31:0] SrcB;
-	wire [31:0] ResultW;
-	wire [3:0] RA1;
-	wire [3:0] RA2;
+	reg [31:0] PCPlus4F, PCNext1F, PCNextF;
+	reg [31:0] ExtImmD, rd1D, rd2D, PCPlus8D;
+	reg [31:0] rd1E, rd2E, ExtImmE, SrcAE, SrcBE, WriteDataE, ALUResultE;
+	reg [31:0] ReadDataW, ALUResultW, ResultW;
+	reg [3:0] RA1D, RA2D, RA1E, RA2E, WA3E, WA3M, WA3W;
+	reg Check1_DE, Check2_DE;
 
-	wire [110:0] OutDecode;
-	wire [110:0] InExecute;
-	wire [31:0] SrcAE;
-	wire [31:0] SrcBE;
-	wire [31:0] ExtImmE;
-	wire [31:0] WriteDataE;
-	wire [3:0] WA3E;
+	// Fetch Stage
+	mux2 #(32) PCNextMux(PCPlus4F, ResultW, PCSrcW, PCNext1F); 
+	mux2 #(32) BranchMux(PCNext1F, ALUResultE, BranchTakenE, PCNextF); 
+	floper #(32) PCReg(clk, reset, ~StallF, PCNextF, PCF); 
+	adder #(32) PCAdd(PCF, 32'b0100, PCPlus4F);
+
+	assign PCPlus8D = PCPlus4F;
 	
-	wire [110:0] OutExecute;
-	wire [110:0] InMemory;
+	// Decode Stage
+	flopenr #(32) InstReg(clk, reset, ~StallD, FlushD, InstrF, InstrD); 
+	mux2 #(4) RA1Mux(InstrD[19:16], 4'b1111, RegSrcD[0], RA1D); 
+	mux2 #(4) RA2Mux(InstrD[3:0], InstrD[15:12], RegSrcD[1], RA2D); 
+    	regfile rf(clk, RegWriteW, RA1D, RA2D, WA3W, ResultW, PCPlus8D, rd1D, rd2D); 
+	extend extender(InstrD[23:0], ImmSrcD, ExtImmD); 
+
+	// Execute Stage
+	flopr #(32) rd1Reg(clk, reset, rd1D, rd1E); 
+	flopr #(32) rd2Reg(clk, reset, rd2D, rd2E); 
+	flopr #(32) ImmReg(clk, reset, ExtImmD, ExtImmE);
+	flopr #(4) WA3EReg(clk, reset, InstrD[15:12], WA3E); 
+	flopr #(4) RA1Reg(clk, reset, RA1D, RA1E); 
+	flopr #(4) RA2Reg(clk, reset, RA2D, RA2E); 
+	mux3 #(32) bypass1Mux(rd1E, ResultW, ALUResultM, ForwardAE, SrcAE); 
+	mux3 #(32) bypass2Mux(rd2E, ResultW, ALUResultM, ForwardBE, WriteDataE); 
+	mux2 #(32) SecSrc(WriteDataE, ExtImmE, ALUSrcE, SrcBE); 
+	alu alu(SrcAE, SrcBE, ALUControlE, ALUResultE, ALUFlagsE); 
 	
-	wire [110:0] OutMemory;
-	wire [110:0] InWB;
+	// Memory Stage
+	flopr #(32) ALUResultReg(clk, reset, ALUResultE, ALUResultM); 
+	flopr #(32) WriteDataReg(clk, reset, WriteDataE, WriteDataM); 
+	flopr #(4) WA3MReg(clk, reset, WA3E, WA3M); 
 
-	pipelineit #(32) FetchToDecode(
-		.i(InstrF),
-		.o(InstrD),
-		.clk(clk),
-		.reset(reset),
-		.stall(StallF),
-        	.flush(FlushD)
-	);
+    	// Writeback Stage
+	flopr #(32) ALUResultReg(clk, reset, ALUResultM, ALUResultW); 
+	flopr #(32) ReadDataReg(clk, reset, ReadDataM, ReadDataW); 
+	flopr #(4) WA3WReg(clk, reset, WA3M, WA3W); 
+	mux2 #(32) ResMux(ALUResultW, ReadDataW, MemtoRegW, ResultW); 
 
-	assign OutDecode[31:0] = SrcA;
-	assign OutDecode[63:32] = WriteData;
-	assign OutDecode[95:64] = ExtImm;
-	assign OutDecode[99:96] = InstrD[15:12];
-
-	pipelineit #(100) DecodeToExecute(
-		.i(OutDecode),
-	       	.o(InExecute),
-	       	.clk(clk),
-		.reset(reset),
-		.stall(StallD),
-		.flush(FlushE)
-	);
-	
-	assign SrcAE = InExecute[31:0];
-	assign WriteDataE = InExecute[63:32];
-	assign ExtImmE = InExecute[95:64];
-	assign WA3E = InExecute[99:96];
-
-	assign OutExecute[31:0] = ALUResultE;
-	assign OutExecute[63:32] = WriteDataE;
-	assign OutExecute[67:64] = InExecute[99:96];
-	
-	pipelineit #(110) ExecuteToMemory(
-	   	.i(OutExecute),
-	   	.o(InMemory),
-	   	.clk(clk),
-		.reset(reset),
-		.stall(StallE),
-		.flush(FlushM)
-	);
-	
-	assign ALUResultM = InMemory[31:0];
-	assign WriteDataM = InMemory[63:32];
-	
-	assign OutMemory[31:0] = ReadData;
-	assign OutMemory[63:32] = ALUResultM;
-	assign OutMemory[67:64] = InMemory[67:64];
-	
-	pipelineit #(110) MemoryToWriteBack (
-		.i(OutMemory),
-		.o(InWB),
-	   	.clk(clk),
-		.reset(reset),
-		.stall(StallM),
-		.flush(1'b0)
-	);
-	
-	mux2 #(32) pcmux(
-		.d0(PCPlus4),
-		.d1(ResultW),
-		.s(PCSrc),
-		.y(PCNext)
-	);
-
-	flopr #(32) pcreg(
-		.clk(clk),
-		.reset(reset),
-		.d(PCNext),
-		.q(PC)
-	);
-
-	adder #(32) pcadd1(
-		.a(PC),
-		.b(32'b100),
-		.y(PCPlus4)
-	);
-
-	adder #(32) pcadd2(
-		.a(PCPlus4),
-		.b(32'b100),
-		.y(PCPlus8)
-	);
-
-	mux2 #(4) ra1mux(
-		.d0(Instr[19:16]),
-		.d1(4'b1111),
-		.s(RegSrc[0]),
-		.y(RA1)
-	);
-	mux2 #(4) ra2mux(
-		.d0(Instr[3:0]),
-		.d1(Instr[15:12]),
-		.s(RegSrc[1]),
-		.y(RA2)
-	);
-
-	regfile rf(
-		.clk(clk),
-		.we3(RegWrite),
-		.ra1(RA1),
-		.ra2(RA2),
-		.wa3(InWB[67:64]),
-		.wd3(ResultW),
-		.r15(PCPlus8),
-		.rd1(SrcA),
-		.rd2(WriteData)
-	);
-
-	mux2 #(32) resmux(
-		.d0(InWB[63:32]),
-		.d1(InWB[31:0]),
-		.s(MemtoReg),
-		.y(ResultW)
-	);
-
-	extend ext(
-		.Instr(InstrD[23:0]),
-		.ImmSrc(ImmSrc),
-		.ExtImm(ExtImm)
-	);
-
-	mux2 #(32) srcbmux(
-		.d0(WriteDataE),
-		.d1(ExtImmE),
-		.s(ALUSrc),
-		.y(SrcBE)
-	);
-
-	alu alu(
-		.a(SrcAE),
-		.b(SrcBE),
-		.ALUControl(ALUControl),
-		.Result(ALUResultE),
-		.Flags(ALUFlags),
-		.Saturated
-	);
-
-	mux2 #(32) forward_muxA (
-		.d0(SrcA),
-	    	.d1(ALUResultM),
-	    	.s(ForwardAE),
-	    	.y(SrcAE)
-	);
-	
-	mux2 #(32) forward_muxB (
-	    	.d0(WriteDataE),
-	    	.d1(ALUResultM),
-	    	.s(ForwardBE),
-	    	.y(SrcBE)
-	);
+    	// Hazard unit checks
+	equaler #(4) c0(WA3M, RA1E, Check1_EM); 
+	equaler #(4) c1(WA3W, RA1E, Check1_EW); 
+	equaler #(4) c2(WA3M, RA2E, Check2_EM); 
+	equaler #(4) c3(WA3W, RA2E, Check2_EW); 
+	equaler #(4) c4a(WA3E, RA1D, Check1_DE); 
+	equaler #(4) c4b(WA3E, RA2D, Check2_DE); 
+    	assign Check12_DE = Check1_DE | Check2_DE;
 endmodule
