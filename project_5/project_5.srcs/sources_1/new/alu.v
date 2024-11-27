@@ -73,7 +73,7 @@ module alu (
                 temp = a + b;
                 Result = 32'b0; // CMN doesn't write output
             end
-
+            
             // Address calculation for LDR/STR
             5'b10010: Result = address_calc; // Address = Rn + offset
 
@@ -86,6 +86,8 @@ module alu (
             5'b10100: begin
                 Result = address_calc; // Address = Rn + offset
             end
+
+            5'b10101: Result = b; // MOV: Result = Operand2
 
             default: Result = 32'b0; // NOP
         endcase
