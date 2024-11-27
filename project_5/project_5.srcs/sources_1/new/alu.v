@@ -3,7 +3,7 @@
 module alu (
     input [31:0] a, b,
     input [2:0] ALUControl,
-    output [31:0] Result,
+    output reg [31:0] Result,
     output [3:0] Flags // Negative, Zero, Carry, oVerflow
 );
     reg neg, zero, carry, overflow;
