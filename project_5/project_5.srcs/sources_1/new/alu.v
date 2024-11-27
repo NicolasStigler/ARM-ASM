@@ -1,10 +1,11 @@
 `timescale 1ns / 1ps
 
 module alu (
-    input signed [31:0] a, b,
+    input signed [31:0] a, b, // `a` is the base register (Rn), `b` is the offset
     input [4:0] ALUControl,
     input Saturated,
     output reg [31:0] Result,
+    output wire [31:0] UpdatedBase, // New base register for post-indexed mode
     output wire [3:0] ALUFlags // Negative, Zero, Carry, Overflow
 );
     wire [31:0] condinvb;
@@ -16,14 +17,27 @@ module alu (
     reg [31:0] temp; // Temporary register for flag-only instructions
     wire carry_out;  // Carry out for addition and subtraction
 
-    // Address calculation for memory operations (Rn + offset)
+    // Address calculation for memory operations
     wire [31:0] address_calc = a + b;
+
+    // Updated base register for post-indexed mode
+    assign UpdatedBase = address_calc; // Updated Rn = Rn + offset
 
     assign condinvb = ALUControl[0] ? ~b : b;
     assign sum_extended = {1'b0, a} + {1'b0, condinvb} + ALUControl[0]; // {1'b0, num}: num -> 0num
-    assign saturated_sum = (sum_extended[31] == 1'b0 && sum_extended[30:0] > $signed(32'b01111111111111111111111111111111)) ? 32'b01111111111111111111111111111111 : (sum_extended[31] == 1'b1 && sum_extended[30:0] < $signed(32'h10000000000000000000000000000000)) ? 32'h10000000000000000000000000000000 : sum_extended[31:0];
-    assign saturated_sub = (a > 0 && b < 0 && a - b < 0) ? 32'b01111111111111111111111111111111 : (a < 0 && b > 0 && a - b > 0) ? 32'h10000000000000000000000000000000 : a - b;
-    assign logic_result = (ALUControl[1:0] == 2'b00) ? a & b : (ALUControl[1:0] == 2'b01) ? a | b : (ALUControl[1:0] == 2'b10) ? a ^ b : ~(a ^ b);
+    assign saturated_sum = (sum_extended[31] == 1'b0 && sum_extended[30:0] > $signed(32'b01111111111111111111111111111111)) ? 
+        32'b01111111111111111111111111111111 : 
+        (sum_extended[31] == 1'b1 && sum_extended[30:0] < $signed(32'h10000000000000000000000000000000)) ? 
+        32'h10000000000000000000000000000000 : 
+        sum_extended[31:0];
+    assign saturated_sub = (a > 0 && b < 0 && a - b < 0) ? 
+        32'b01111111111111111111111111111111 : 
+        (a < 0 && b > 0 && a - b > 0) ? 
+        32'h10000000000000000000000000000000 : 
+        a - b;
+    assign logic_result = (ALUControl[1:0] == 2'b00) ? a & b : 
+                          (ALUControl[1:0] == 2'b01) ? a | b : 
+                          (ALUControl[1:0] == 2'b10) ? a ^ b : ~(a ^ b);
     
     always @(*) begin
         case (ALUControl)
@@ -62,6 +76,16 @@ module alu (
 
             // Address calculation for LDR/STR
             5'b10010: Result = address_calc; // Address = Rn + offset
+
+            // Post-indexed mode
+            5'b10011: begin
+                Result = address_calc; // Use Rn as the address
+            end
+
+            // Pre-indexed mode
+            5'b10100: begin
+                Result = address_calc; // Address = Rn + offset
+            end
 
             default: Result = 32'b0; // NOP
         endcase

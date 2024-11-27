@@ -2,21 +2,22 @@
 
 module decode (
     input wire [1:0] Op,
-	input wire [5:0] Funct,
-	input wire [3:0] Rd,
-	output reg [1:0] FlagW,
-	output wire PCS,
-	output wire RegW,
-	output wire MemW,
-	output wire MemtoReg,
-	output wire ALUSrc,
-	output wire [1:0] ImmSrc,
-	output wire [1:0] RegSrc,
-    output reg [4:0] ALUControl
+    input wire [5:0] Funct,
+    input wire [3:0] Rd,
+    output reg [1:0] FlagW,
+    output wire PCS,
+    output wire RegW,
+    output wire MemW,
+    output wire MemtoReg,
+    output wire ALUSrc,
+    output wire [1:0] ImmSrc,
+    output wire [1:0] RegSrc,
+    output reg [4:0] ALUControl,
+    output reg UpdateBase // Signal to update the base register (Rn)
 );
     reg [9:0] controls;
     wire Branch; // Branch enable
-    wire ALUOp; // ALU operation enable
+    wire ALUOp;  // ALU operation enable
 
     always @(*) begin
         case (Op)
@@ -61,6 +62,19 @@ module decode (
                 5'b00111: ALUControl = 5'b01111; // TST (Flag-only)
                 5'b01010: ALUControl = 5'b10000; // TEQ (Flag-only)
                 5'b01011: ALUControl = 5'b10001; // CMN (Flag-only)
+
+                // Pre-indexed mode
+                5'b01100: begin
+                    ALUControl = 5'b10100; // Pre-indexed mode (Rn + offset)
+                    UpdateBase = 1'b0;    // No base register update
+                end
+
+                // Post-indexed mode
+                5'b01101: begin
+                    ALUControl = 5'b10011; // Post-indexed mode (Rn)
+                    UpdateBase = 1'b1;    // Update the base register
+                end
+
                 default: ALUControl = 5'bxxxxx; // Undefined operation
             endcase
 
@@ -70,6 +84,7 @@ module decode (
         end else begin
             // Default values for non-ALU operations
             ALUControl = 5'b00000;
+            UpdateBase = 1'b0; // No base register update
             FlagW = 2'b00;
         end
     end

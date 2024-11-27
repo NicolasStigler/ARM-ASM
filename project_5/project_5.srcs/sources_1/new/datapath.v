@@ -13,6 +13,7 @@ module datapath (
     input MemtoRegE, // Added to manage MemtoReg in the execute stage
     input PCSrcW,
     input RegWriteW,
+    input UpdateBaseE, // Signal to update the base register in post-indexed mode
     output [31:0] PCF,
     input [31:0] InstrF,
     output [31:0] InstrD,
@@ -29,6 +30,7 @@ module datapath (
     wire [31:0] ExtImmD, rd1D, rd2D, PCPlus8D;
     wire [31:0] rd1E, rd2E, ExtImmE, SrcAE, SrcBE, WriteDataE, ALUResultE;
     wire [31:0] ReadDataW, ALUResultW, ResultW;
+    wire [31:0] UpdatedBaseE, UpdatedBaseM, UpdatedBaseW; // Updated base register for post-indexed mode
     wire [3:0] RA1D, RA2D, RA1E, RA2E, WA3E, WA3M, WA3W;
     wire Check1_DE, Check2_DE;
 
@@ -57,18 +59,24 @@ module datapath (
     mux3 #(32) bypass1Mux(rd1E, ResultW, ALUResultM, ForwardAE, SrcAE); 
     mux3 #(32) bypass2Mux(rd2E, ResultW, ALUResultM, ForwardBE, WriteDataE); 
     mux2 #(32) SecSrc(WriteDataE, ExtImmE, ALUSrcE, SrcBE); 
-    alu alu(SrcAE, SrcBE, ALUControlE, ALUResultE, ALUFlagsE); 
+    alu alu(SrcAE, SrcBE, ALUControlE, ALUResultE, UpdatedBaseE, ALUFlagsE); 
 
     // Memory Stage
     flopr #(32) ALUResultReg(clk, reset, ALUResultE, ALUResultM); 
     flopr #(32) WriteDataReg(clk, reset, WriteDataE, WriteDataM); 
     flopr #(4) WA3MReg(clk, reset, WA3E, WA3M); 
+    flopr #(32) UpdatedBaseReg(clk, reset, UpdatedBaseE, UpdatedBaseM); 
 
     // Writeback Stage
     flopr #(32) ALUResultRegW(clk, reset, ALUResultM, ALUResultW); 
     flopr #(32) ReadDataReg(clk, reset, ReadDataM, ReadDataW); 
     flopr #(4) WA3WReg(clk, reset, WA3M, WA3W); 
+    flopr #(32) UpdatedBaseRegW(clk, reset, UpdatedBaseM, UpdatedBaseW); 
     mux2 #(32) ResMux(ALUResultW, ReadDataW, MemtoRegW, ResultW); 
+
+    // Update base register in post-indexed mode
+    wire [31:0] FinalResultW;
+    mux2 #(32) UpdateBaseMux(ResultW, UpdatedBaseW, UpdateBaseE, FinalResultW);
 
     // Hazard unit checks
     equaler #(4) c0(WA3M, RA1E, Check1_EM); 
