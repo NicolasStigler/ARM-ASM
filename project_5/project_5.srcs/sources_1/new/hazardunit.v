@@ -10,7 +10,8 @@ module hazardunit(
     input Check12_DE,
     input RegWriteM,
     input RegWriteW,
-    input BranchTakenE,
+    input BranchTakenE,      // Branch taken signal from the Execute stage
+    input LinkWriteE,        // Link write signal for BL (Branch with Link)
     input MemtoRegE,
     input PCWPendingF,
     input PCSrcW,
@@ -22,6 +23,7 @@ module hazardunit(
 );
     wire ldrStallD;
     wire baseUpdateHazard; // Hazard due to base register update
+    wire branchHazard;     // Hazard due to branch instructions
     reg [1:0] ForwardAE, ForwardBE;
 
     // Forwarding logic
@@ -47,9 +49,12 @@ module hazardunit(
     // Detect hazard for base register update
     assign baseUpdateHazard = UpdateBaseE | UpdateBaseM;
 
+    // Detect hazard for branch instructions
+    assign branchHazard = BranchTakenE | LinkWriteE;
+
     // Stall and flush logic
     assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard;
     assign StallD = ldrStallD | baseUpdateHazard;
-    assign FlushD = PCWPendingF | PCSrcW | BranchTakenE;
-    assign FlushE = ldrStallD | BranchTakenE;
+    assign FlushD = PCWPendingF | PCSrcW | BranchTakenE | LinkWriteE; // Flush if branch/link occurs
+    assign FlushE = ldrStallD | BranchTakenE | LinkWriteE;            // Flush Execute stage on branch
 endmodule

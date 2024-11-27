@@ -10,10 +10,11 @@ module datapath (
     input BranchTakenE,
     input [4:0] ALUControlE, // Updated to match 5-bit ALU control
     input MemtoRegW,
-    input MemtoRegE, // Added to manage MemtoReg in the execute stage
+    input MemtoRegE,
     input PCSrcW,
     input RegWriteW,
-    input UpdateBaseE, // Signal to update the base register in post-indexed mode
+    input UpdateBaseE,
+    input LinkWriteE, // New signal to handle BL (write to Link Register R14)
     output [31:0] PCF,
     input [31:0] InstrF,
     output [31:0] InstrD,
@@ -30,13 +31,15 @@ module datapath (
     wire [31:0] ExtImmD, rd1D, rd2D, PCPlus8D;
     wire [31:0] rd1E, rd2E, ExtImmE, SrcAE, SrcBE, WriteDataE, ALUResultE;
     wire [31:0] ReadDataW, ALUResultW, ResultW;
-    wire [31:0] UpdatedBaseE, UpdatedBaseM, UpdatedBaseW; // Updated base register for post-indexed mode
+    wire [31:0] UpdatedBaseE, UpdatedBaseM, UpdatedBaseW; 
+    wire [31:0] BranchTargetE, PCBranchE; // Branch target address
+    wire [31:0] LinkAddressE; // Return address for BL
     wire [3:0] RA1D, RA2D, RA1E, RA2E, WA3E, WA3M, WA3W;
     wire Check1_DE, Check2_DE;
 
     // Fetch Stage
     mux2 #(32) PCNextMux(PCPlus4F, ResultW, PCSrcW, PCNext1F); 
-    mux2 #(32) BranchMux(PCNext1F, ALUResultE, BranchTakenE, PCNextF); 
+    mux2 #(32) BranchMux(PCNext1F, BranchTargetE, BranchTakenE, PCNextF); 
     floper #(32) PCReg(clk, reset, ~StallF, PCNextF, PCF); 
     adder #(32) PCAdd(PCF, 32'b0100, PCPlus4F);
 
@@ -61,6 +64,10 @@ module datapath (
     mux2 #(32) SecSrc(WriteDataE, ExtImmE, ALUSrcE, SrcBE); 
     alu alu(SrcAE, SrcBE, ALUControlE, ALUResultE, UpdatedBaseE, ALUFlagsE); 
 
+    // Calculate Branch Target
+    adder #(32) BranchTargetCalc(PCPlus4F, {ExtImmE[29:0], 2'b00}, BranchTargetE);
+    assign LinkAddressE = PCPlus4F; // Return address for BL
+
     // Memory Stage
     flopr #(32) ALUResultReg(clk, reset, ALUResultE, ALUResultM); 
     flopr #(32) WriteDataReg(clk, reset, WriteDataE, WriteDataM); 
@@ -74,9 +81,10 @@ module datapath (
     flopr #(32) UpdatedBaseRegW(clk, reset, UpdatedBaseM, UpdatedBaseW); 
     mux2 #(32) ResMux(ALUResultW, ReadDataW, MemtoRegW, ResultW); 
 
-    // Update base register in post-indexed mode
+    // Update Link Register (R14) for BL
     wire [31:0] FinalResultW;
-    mux2 #(32) UpdateBaseMux(ResultW, UpdatedBaseW, UpdateBaseE, FinalResultW);
+    wire [3:0] LinkReg = 4'b1110; // R14
+    mux2 #(32) UpdateLinkMux(ResultW, LinkAddressE, LinkWriteE, FinalResultW);
 
     // Hazard unit checks
     equaler #(4) c0(WA3M, RA1E, Check1_EM); 
