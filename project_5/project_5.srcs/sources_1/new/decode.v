@@ -1,37 +1,25 @@
 `timescale 1ns / 1ps
 
 module decode (
-    Op,
-    Funct,
-    Rd,
-    FlagW,
-    PCS,
-    RegW,
-    MemW,
-    MemtoReg,
-    ALUSrc,
-    ImmSrc,
-    RegSrc,
-    ALUControl
+    input wire [1:0] Op,
+	input wire [5:0] Funct,
+	input wire [3:0] Rd,
+	output reg [1:0] FlagW,
+	output wire PCS,
+	output wire RegW,
+	output wire MemW,
+	output wire MemtoReg,
+	output wire ALUSrc,
+	output wire [1:0] ImmSrc,
+	output wire [1:0] RegSrc,
+    output reg [4:0] ALUControl
 );
-    input wire [1:0] Op; // Main opcode field
-    input wire [5:0] Funct; // Secondary opcode (function field)
-    input wire [3:0] Rd; // Destination register
-    output reg [1:0] FlagW; // Control flags for flag updates
-    output wire PCS; // Program counter source
-    output wire RegW; // Register write enable
-    output wire MemW; // Memory write enable
-    output wire MemtoReg; // Select between ALU result and memory data
-    output wire ALUSrc; // Select ALU source operand (register or immediate)
-    output wire [1:0] ImmSrc; // Select type of immediate value
-    output wire [1:0] RegSrc; // Source register selection control
-    output reg [4:0] ALUControl; // ALU control signal
     reg [9:0] controls;
     wire Branch; // Branch enable
     wire ALUOp; // ALU operation enable
 
     always @(*) begin
-        casex (Op)
+        case (Op)
             2'b00: // Data processing
                 if (Funct[5]) // Branch instructions
                     controls = 10'b0000101001; // PCS enabled, branch
