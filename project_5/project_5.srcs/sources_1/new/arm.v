@@ -4,14 +4,14 @@
 `include "hazardunit.v"
 
 module arm (
-	input clk;
-	input reset;
-	output [31:0] PCF;
-	input [31:0] InstrF;
-	output MemWriteM;
-	output [31:0] ALUResultM;
-	output [31:0] WriteDataM;
-	input [31:0] ReadDataM;
+	input clk,
+	input reset,
+	output [31:0] PCF,
+	input [31:0] InstrF,
+	output MemWriteM,
+	output [31:0] ALUResultM,
+	output [31:0] WriteDataM,
+	input [31:0] ReadDataM
 );
 	wire [1:0] RegSrcD;
 	wire [1:0] ImmSrcD;
