@@ -8,15 +8,16 @@ module datapath (
     input [1:0] ImmSrcD,
     input ALUSrcE,
     input BranchTakenE,
-    input [4:0] ALUControlE, // Updated to match 5-bit ALU control
+    input [4:0] ALUControlE,
     input MemtoRegW,
     input MemtoRegE,
     input PCSrcW,
     input RegWriteW,
     input UpdateBaseE,
-    input LinkWriteE, // New signal to handle BL (write to Link Register R14)
-    input CBZ_E,      // Signal to enable CBZ comparison
-    input CBNZ_E,     // Signal to enable CBNZ comparison
+    input LinkWriteE,
+    input CBZ_E,
+    input CBNZ_E,
+    input SpecialInstrE,       // New: Signal for special instructions
     output [31:0] PCF,
     input [31:0] InstrF,
     output [31:0] InstrD,
@@ -32,13 +33,15 @@ module datapath (
     wire [31:0] PCPlus4F, PCNext1F, PCNextF;
     wire [31:0] ExtImmD, rd1D, rd2D, PCPlus8D;
     wire [31:0] rd1E, rd2E, ExtImmE, SrcAE, SrcBE, WriteDataE, ALUResultE;
+    wire [31:0] SpecialResultE;     // Result from special hardware
+    wire [31:0] SelectedResultE;    // Final result in execute stage
     wire [31:0] ReadDataW, ALUResultW, ResultW;
     wire [31:0] UpdatedBaseE, UpdatedBaseM, UpdatedBaseW; 
-    wire [31:0] BranchTargetE, PCBranchE; // Branch target address
-    wire [31:0] LinkAddressE; // Return address for BL
+    wire [31:0] BranchTargetE, PCBranchE;
+    wire [31:0] LinkAddressE;
     wire [3:0] RA1D, RA2D, RA1E, RA2E, WA3E, WA3M, WA3W;
     wire Check1_DE, Check2_DE;
-    wire BranchCondMetE; // Condition met for CBZ/CBNZ
+    wire BranchCondMetE;
 
     // Fetch Stage
     mux2 #(32) PCNextMux(PCPlus4F, ResultW, PCSrcW, PCNext1F); 
@@ -65,17 +68,30 @@ module datapath (
     mux3 #(32) bypass1Mux(rd1E, ResultW, ALUResultM, ForwardAE, SrcAE); 
     mux3 #(32) bypass2Mux(rd2E, ResultW, ALUResultM, ForwardBE, WriteDataE); 
     mux2 #(32) SecSrc(WriteDataE, ExtImmE, ALUSrcE, SrcBE); 
+
+    // ALU Execution
     alu alu(SrcAE, SrcBE, ALUControlE, UpdatedBaseE, ALUResultE, ALUFlagsE); 
 
+    // Special Hardware Execution
+    special special_hw(
+        .a(SrcAE),
+        .b(SrcBE),
+        .control(ALUControlE),
+        .result(SpecialResultE)
+    );
+
+    // Select Result Based on SpecialInstrE
+    mux2 #(32) ResultMux(ALUResultE, SpecialResultE, SpecialInstrE, SelectedResultE);
+
     // CBZ/CBNZ Condition Check
-    assign BranchCondMetE = (CBZ_E & ALUFlagsE[2]) | (CBNZ_E & ~ALUFlagsE[2]); // Z flag
+    assign BranchCondMetE = (CBZ_E & ALUFlagsE[2]) | (CBNZ_E & ~ALUFlagsE[2]);
 
     // Calculate Branch Target
     adder #(32) BranchTargetCalc(PCPlus4F, {ExtImmE[29:0], 2'b00}, BranchTargetE);
-    assign LinkAddressE = PCPlus4F; // Return address for BL
+    assign LinkAddressE = PCPlus4F; 
 
     // Memory Stage
-    flopr #(32) ALUResultReg(clk, reset, ALUResultE, ALUResultM); 
+    flopr #(32) ALUResultReg(clk, reset, SelectedResultE, ALUResultM); 
     flopr #(32) WriteDataReg(clk, reset, WriteDataE, WriteDataM); 
     flopr #(4) WA3MReg(clk, reset, WA3E, WA3M); 
     flopr #(32) UpdatedBaseReg(clk, reset, UpdatedBaseE, UpdatedBaseM); 
@@ -89,7 +105,7 @@ module datapath (
 
     // Update Link Register (R14) for BL
     wire [31:0] FinalResultW;
-    wire [3:0] LinkReg = 4'b1110; // R14
+    wire [3:0] LinkReg = 4'b1110; 
     mux2 #(32) UpdateLinkMux(ResultW, LinkAddressE, LinkWriteE, FinalResultW);
 
     // Hazard unit checks

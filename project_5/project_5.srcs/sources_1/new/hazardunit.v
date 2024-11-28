@@ -17,13 +17,16 @@ module hazardunit(
     input PCSrcW,
     input UpdateBaseE,       // Signal for base register update in Execute stage
     input UpdateBaseM,       // Signal for base register update in Memory stage
+    input SpecialInstrE,     // Special instruction signal in Execute stage
+    input SpecialInstrM,     // Special instruction signal in Memory stage
     output [1:0] ForwardAE, ForwardBE,
     output StallF, StallD,
     output FlushD, FlushE
 );
     wire ldrStallD;
-    wire baseUpdateHazard; // Hazard due to base register update
-    wire branchHazard;     // Hazard due to branch instructions
+    wire baseUpdateHazard;   // Hazard due to base register update
+    wire branchHazard;       // Hazard due to branch instructions
+    wire specialInstrStall;  // Hazard due to special instruction dependency
     reg [1:0] ForwardAE, ForwardBE;
 
     // Forwarding logic
@@ -52,9 +55,12 @@ module hazardunit(
     // Detect hazard for branch instructions
     assign branchHazard = BranchTakenE | LinkWriteE;
 
+    // Detect hazard for special instructions
+    assign specialInstrStall = SpecialInstrE & (Check1_EM | Check2_EM); // Dependency on special instruction result
+
     // Stall and flush logic
-    assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard;
-    assign StallD = ldrStallD | baseUpdateHazard;
+    assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard | specialInstrStall;
+    assign StallD = ldrStallD | baseUpdateHazard | specialInstrStall;
     assign FlushD = PCWPendingF | PCSrcW | branchHazard; // Flush if branch or link occurs
-    assign FlushE = ldrStallD | branchHazard;            // Flush Execute stage on branch or link
+    assign FlushE = ldrStallD | branchHazard | specialInstrStall; // Flush Execute stage on branch, link, or special instruction
 endmodule
