@@ -4,11 +4,11 @@
 `include "dmem.v"
 
 module top (
-	input clk;
-	input reset;
-	output [31:0] WriteDataM;
-	output [31:0] DataAdrM;
-	output MemWriteM;
+	input clk,
+	input reset,
+	output [31:0] WriteDataM,
+	output [31:0] DataAdrM,
+	output MemWriteM
 );
 	wire [31:0] PCF;
 	wire [31:0] InstrF;
