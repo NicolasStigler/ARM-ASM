@@ -17,7 +17,11 @@ module decode (
     output reg [4:0] ALUControl,
     output reg UpdateBase, // Signal to update the base register (Rn)
     output reg LinkWrite,  // Signal to write to the link register (R14)
-    output reg SpecialInstr // Signal for special instructions (Op == 11)
+    output reg SpecialInstr, // Signal for special instructions (Op == 11)
+    output reg LoadMultiple,  // Signal for LDM instructions
+    output reg StoreMultiple, // Signal for STM instructions
+    output reg PreDecrement,  // Addressing mode for decrement before
+    output reg PostIncrement  // Addressing mode for increment after
 );
     reg [9:0] controls;
     wire Branch; // Branch enable
@@ -49,6 +53,10 @@ module decode (
         UpdateBase = 1'b0;
         LinkWrite = 1'b0;
         SpecialInstr = 1'b0;
+        LoadMultiple = 1'b0;
+        StoreMultiple = 1'b0;
+        PreDecrement = 1'b0;
+        PostIncrement = 1'b0;
 
         case (Op)
             2'b00: begin // Data Processing
@@ -89,6 +97,26 @@ module decode (
                     end
                     5'b01101: begin // Post-indexed mode
                         ALUControl = 5'b10011; // Post-indexed (Rn)
+                        UpdateBase = 1'b1;
+                    end
+                    5'b10000: begin // STMIA (Store Multiple Increment After)
+                        StoreMultiple = 1'b1;
+                        PostIncrement = 1'b1;
+                        UpdateBase = 1'b1;
+                    end
+                    5'b10001: begin // LDMDB (Load Multiple Decrement Before)
+                        LoadMultiple = 1'b1;
+                        PreDecrement = 1'b1;
+                        UpdateBase = 1'b1;
+                    end
+                    5'b10010: begin // STMDB (Store Multiple Decrement Before)
+                        StoreMultiple = 1'b1;
+                        PreDecrement = 1'b1;
+                        UpdateBase = 1'b1;
+                    end
+                    5'b10011: begin // LDMIA (Load Multiple Increment After)
+                        LoadMultiple = 1'b1;
+                        PostIncrement = 1'b1;
                         UpdateBase = 1'b1;
                     end
                 endcase

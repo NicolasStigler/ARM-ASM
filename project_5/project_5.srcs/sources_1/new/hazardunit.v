@@ -17,17 +17,21 @@ module hazardunit(
     input PCSrcW,
     input UpdateBaseE,       // Signal for base register update in Execute stage
     input UpdateBaseM,       // Signal for base register update in Memory stage
+    input LoadMultipleE,     // Signal for LDM instructions
+    input StoreMultipleE,    // Signal for STM instructions
     input SpecialInstrE,     // Special instruction signal in Execute stage
     input SpecialInstrM,     // Special instruction signal in Memory stage
-    output [1:0] ForwardAE, ForwardBE,
-    output StallF, StallD,
-    output FlushD, FlushE
+    output reg [1:0] ForwardAE, ForwardBE,
+    output StallF,
+    output StallD,
+    output FlushD,
+    output FlushE
 );
     wire ldrStallD;
     wire baseUpdateHazard;   // Hazard due to base register update
     wire branchHazard;       // Hazard due to branch instructions
     wire specialInstrStall;  // Hazard due to special instruction dependency
-    reg [1:0] ForwardAE, ForwardBE;
+    wire loadStoreMultipleHazard; // Hazard for LDM/STM instructions
 
     // Forwarding logic
     always @(*) begin
@@ -46,7 +50,7 @@ module hazardunit(
             ForwardBE = 2'b00; // No forwarding
     end
 
-    // Detect hazard for load-use and base register update
+    // Detect hazard for load-use (LDR)
     assign ldrStallD = Check12_DE & MemtoRegE;
 
     // Detect hazard for base register update
@@ -56,11 +60,14 @@ module hazardunit(
     assign branchHazard = BranchTakenE | LinkWriteE;
 
     // Detect hazard for special instructions
-    assign specialInstrStall = SpecialInstrE & (Check1_EM | Check2_EM); // Dependency on special instruction result
+    assign specialInstrStall = SpecialInstrE & (Check1_EM | Check2_EM);
+
+    // Detect hazard for load/store multiple instructions
+    assign loadStoreMultipleHazard = (LoadMultipleE | StoreMultipleE) & (baseUpdateHazard | ldrStallD);
 
     // Stall and flush logic
-    assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard | specialInstrStall;
-    assign StallD = ldrStallD | baseUpdateHazard | specialInstrStall;
+    assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard | specialInstrStall | loadStoreMultipleHazard;
+    assign StallD = ldrStallD | baseUpdateHazard | specialInstrStall | loadStoreMultipleHazard;
     assign FlushD = PCWPendingF | PCSrcW | branchHazard; // Flush if branch or link occurs
-    assign FlushE = ldrStallD | branchHazard | specialInstrStall; // Flush Execute stage on branch, link, or special instruction
+    assign FlushE = ldrStallD | branchHazard | specialInstrStall | loadStoreMultipleHazard; // Flush Execute stage on branch, link, or special instruction
 endmodule
