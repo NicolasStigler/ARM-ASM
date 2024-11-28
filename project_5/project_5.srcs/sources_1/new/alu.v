@@ -103,6 +103,12 @@ module alu (
                 Result = (a != 32'b0) ? 32'b1 : 32'b0; // Set Result to 1 if not zero
             end
 
+            // QADD (Saturation Addition)
+            5'b11001: Result = saturated_sum;
+
+            // QSUB (Saturation Subtraction)
+            5'b11010: Result = saturated_sub;
+
             default: Result = 32'b0; // NOP
         endcase
     end
@@ -112,4 +118,4 @@ module alu (
     assign ALUFlags[2] = (temp == 0); // Z (Zero)
     assign ALUFlags[1] = (ALUControl == 5'b00000 || ALUControl == 5'b10000) ? sum_extended[32] : carry_out; // C (Carry)
     assign ALUFlags[0] = (a[31] == b[31]) && (a[31] != temp[31]); // V (Overflow)
-endmodule
+endmodule  

@@ -14,7 +14,8 @@ module decode (
     output wire [1:0] RegSrc,
     output reg [4:0] ALUControl,
     output reg UpdateBase, // Signal to update the base register (Rn)
-    output reg LinkWrite  // Signal to write to the link register (R14)
+    output reg LinkWrite,  // Signal to write to the link register (R14)
+    output reg SpecialInstr // Signal for special instructions (Op == 11)
 );
     reg [9:0] controls;
     wire Branch; // Branch enable
@@ -31,6 +32,8 @@ module decode (
                     controls = 10'b1001110100; // MemtoReg enabled
             2'b10: // Branch Instructions
                 controls = 10'b0110100010; // Branch logic
+            2'b11: // Special Instructions Category
+                controls = 10'b0000001000; // Custom control for special instructions
             default: controls = 10'bxxxxxxxxxx; // Undefined
         endcase
     end
@@ -43,6 +46,7 @@ module decode (
         ALUControl = 5'b00000;
         UpdateBase = 1'b0;
         LinkWrite = 1'b0;
+        SpecialInstr = 1'b0;
 
         case (Op)
             2'b00: begin // Data Processing
@@ -61,8 +65,10 @@ module decode (
                     5'b00010: ALUControl = 5'b01011; // LSR
                     5'b00011: ALUControl = 5'b01100; // ASR
                     5'b00101: ALUControl = 5'b01101; // ROR
-                    5'b11010: ALUControl = 5'b10101; // MOV
-                    5'b11100: ALUControl = 5'b10110; // RRX (Rotate Right with Extend)
+                    5'b11100: ALUControl = 5'b01110; // MOV
+                    5'b11100: ALUControl = 5'b01111; // RRX (Rotate Right with Extend)
+                    5'b11001: ALUControl = 5'b10000; // QADD (Saturating Add)
+                    5'b11010: ALUControl = 5'b10001; // QSUB (Saturating Subtract)
                     default: ALUControl = 5'bxxxxx; // Undefined
                 endcase
                 FlagW = {Funct[0], Funct[0] & ((ALUControl == 5'b00000) | (ALUControl == 5'b00001))}; // Flags
@@ -71,7 +77,7 @@ module decode (
             2'b01: begin // Load/Store
                 case (Funct[4:0])
                     5'b01100: begin // Pre-indexed mode
-                        ALUControl = 5'b10100; // Pre-indexed (Rn + offset)
+                        ALUControl = 5'b10010; // Pre-indexed (Rn + offset)
                         UpdateBase = 1'b0;
                     end
                     5'b01101: begin // Post-indexed mode
@@ -101,10 +107,24 @@ module decode (
                     end
                 endcase
             end
+
+            2'b11: begin // Special Instructions Category
+                case (Funct[5:0])
+                    6'b000000: begin // MUL (Multiply)
+                        SpecialInstr = 1'b1; 
+                        ALUControl = 5'bxxxxx; // Pass to special hardware
+                    end
+                    // Other special instructions handled similarly
+                    default: begin // Undefined special instruction
+                        SpecialInstr = 1'b0; 
+                        ALUControl = 5'bxxxxx; // Undefined control
+                    end
+                endcase
+            end
         endcase
     end
 
     // Program counter source logic
     assign PCS = ((Rd == 4'b1111) & RegW) | Branch;
 
-endmodule
+endmodule  
