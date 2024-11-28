@@ -55,13 +55,13 @@ module datapath (
     // Fetch Stage
     mux2 #(32) PCNextMux(PCPlus4F, ResultW, PCSrcW, PCNext1F);
     mux2 #(32) BranchMux(PCNext1F, BranchTargetE, BranchCondMetE | BranchTakenE, PCNextF);
-    floper #(32) PCReg(clk, reset, ~StallF, PCNextF, PCF);
+    flopr #(32) PCReg(clk, reset, PCNextF, PCF);
     adder #(32) PCAdd(PCF, 32'b0100, PCPlus4F);
 
     assign PCPlus8D = PCPlus4F;
 
     // Decode Stage
-    flopenr #(32) InstReg(clk, reset, ~StallD, FlushD, InstrF, InstrD);
+    flopenr #(32) InstReg(clk, reset, FlushD, InstrF, InstrD);
     mux2 #(4) RA1Mux(InstrD[19:16], 4'b1111, RegSrcD[0], RA1D);
     mux2 #(4) RA2Mux(InstrD[3:0], InstrD[15:12], RegSrcD[1], RA2D);
     regfile rf(clk, RegWriteW, RA1D, RA2D, WA3W, ResultW, PCPlus8D, rd1D, rd2D);

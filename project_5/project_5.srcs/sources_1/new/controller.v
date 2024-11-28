@@ -20,16 +20,17 @@ module controller (
     output wire PCWPendingF,
     output wire LinkWriteE,
     output wire SpecialInstrE,
-    output wire LoadMultipleE,      // New: Signal for LDM instructions
-    output wire StoreMultipleE,     // New: Signal for STM instructions
-    output wire PreDecrementE,      // New: Addressing mode for decrement before
-    output wire PostIncrementE,     // New: Addressing mode for increment after
-    output wire UpdateBaseE,        // New: Update base register after memory access
+    output wire [4:0] SpecialInstrControlE, // New: Pass SpecialInstrControl to Execute stage
+    output wire LoadMultipleE,
+    output wire StoreMultipleE,
+    output wire PreDecrementE,
+    output wire PostIncrementE,
+    output wire UpdateBaseE,
     input wire FlushE
 );
     // Control signals in the Decode stage
     wire [1:0] FlagWriteD, FlagWriteE;
-    wire [4:0] ALUControlD;
+    wire [4:0] ALUControlD, SpecialInstrControlD; // Added SpecialInstrControl
     wire ALUSrcD, MemtoRegD, MemWriteD, RegWriteD, PCSrcD;
     wire SpecialInstrD, BranchD, LinkD, ALUOpD;
     wire LoadMultipleD, StoreMultipleD, PreDecrementD, PostIncrementD, UpdateBaseD;
@@ -50,59 +51,36 @@ module controller (
         .ALUControl(ALUControlD),
         .LinkWrite(LinkD),
         .SpecialInstr(SpecialInstrD),
-        .LoadMultiple(LoadMultipleD),       // New signal for LDM
-        .StoreMultiple(StoreMultipleD),     // New signal for STM
-        .PreDecrement(PreDecrementD),       // New signal for addressing mode
-        .PostIncrement(PostIncrementD),     // New signal for addressing mode
-        .UpdateBase(UpdateBaseD)            // New signal to update base register
+        .SpecialInstrControl(SpecialInstrControlD), // Connect new output
+        .LoadMultiple(LoadMultipleD),
+        .StoreMultiple(StoreMultipleD),
+        .PreDecrement(PreDecrementD),
+        .PostIncrement(PostIncrementD),
+        .UpdateBase(UpdateBaseD)
     );
 
     // Pass control signals to the Execute stage
-    flopenr #(18) regE ( // Increased width to include new control signals
+    flopenr #(23) regE ( // Increased width for SpecialInstrControl
         .clk(clk),
         .reset(reset),
         .flush(FlushE),
         .d({
             PCSrcD, RegWriteD, MemWriteD, MemtoRegD, ALUSrcD, ALUControlD,
-            FlagWriteD, LinkD, SpecialInstrD, LoadMultipleD, StoreMultipleD,
-            PreDecrementD, PostIncrementD, UpdateBaseD
+            FlagWriteD, LinkD, SpecialInstrD, SpecialInstrControlD,
+            LoadMultipleD, StoreMultipleD, PreDecrementD, PostIncrementD, UpdateBaseD
         }),
         .q({
             PCSrcE, RegWriteE, MemWriteE, MemtoRegE, ALUSrcE, ALUControlE,
-            FlagWriteE, LinkWriteE, SpecialInstrE, LoadMultipleE, StoreMultipleE,
-            PreDecrementE, PostIncrementE, UpdateBaseE
+            FlagWriteE, LinkWriteE, SpecialInstrE, SpecialInstrControlE,
+            LoadMultipleE, StoreMultipleE, PreDecrementE, PostIncrementE, UpdateBaseE
         })
     );
 
     // Determine if the branch is taken
     condlogic cl(
         .Cond(InstrD[31:28]),
-        .ALUFlags(ALUFlagsE),
+        .Flags(ALUFlagsE),
         .FlagW(FlagWriteE),
-        .PCS(PCSrcE),
-        .BranchTaken(BranchTakenE)
+        .CondEx(BranchTakenE)
     );
-
-    // Pass signals to the Memory stage
-    flopr #(9) regM ( // Increased width for new control signals
-        .clk(clk),
-        .reset(reset),
-        .d({
-            RegWriteE, MemWriteE, MemtoRegE, BranchTakenE, SpecialInstrE,
-            LoadMultipleE, StoreMultipleE, UpdateBaseE
-        }),
-        .q({
-            RegWriteM, MemWriteM, MemtoRegM, BranchTakenM, SpecialInstrM,
-            LoadMultipleM, StoreMultipleM, UpdateBaseM
-        })
-    );
-
-    // Pass signals to the WriteBack stage
-    flopr #(5) regW ( // Increased width for new control signals
-        .clk(clk),
-        .reset(reset),
-        .d({RegWriteM, MemtoRegM, BranchTakenM, SpecialInstrM, UpdateBaseM}),
-        .q({RegWriteW, MemtoRegW, PCSrcW, SpecialInstrW, UpdateBaseW})
-    );
-
 endmodule
