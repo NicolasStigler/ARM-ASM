@@ -18,6 +18,7 @@ module decode (
     output reg UpdateBase, // Signal to update the base register (Rn)
     output reg LinkWrite,  // Signal to write to the link register (R14)
     output reg SpecialInstr, // Signal for special instructions (Op == 11)
+    output reg [4:0] SpecialInstrControl, // Control for special instructions
     output reg LoadMultiple,  // Signal for LDM instructions
     output reg StoreMultiple, // Signal for STM instructions
     output reg PreDecrement,  // Addressing mode for decrement before
@@ -146,13 +147,44 @@ module decode (
             2'b11: begin // Special Instructions Category
                 case (Funct[5:0])
                     6'b000000: begin // MUL (Multiply)
-                        SpecialInstr = 1'b1; 
-                        ALUControl = 5'bxxxxx; // Pass to special hardware
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00001; // Corresponds to MUL
                     end
-                    // Other special instructions handled similarly
+                    6'b000001: begin // MLA (Multiply-Accumulate)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00010; // Corresponds to MLA
+                    end
+                    6'b000010: begin // MLS (Multiply-Subtract)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00011; // Corresponds to MLS
+                    end
+                    6'b000011: begin // UMULL (Unsigned Multiply Long)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00100; // Corresponds to UMULL
+                    end
+                    6'b000100: begin // UMLAL (Unsigned Multiply Accumulate Long)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00101; // Corresponds to UMLAL
+                    end
+                    6'b000101: begin // SMULL (Signed Multiply Long)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00110; // Corresponds to SMULL
+                    end
+                    6'b000110: begin // SMLAL (Signed Multiply Accumulate Long)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b00111; // Corresponds to SMLAL
+                    end
+                    6'b000111: begin // UDIV (Unsigned Division)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b01000; // Corresponds to UDIV
+                    end
+                    6'b001000: begin // SDIV (Signed Division)
+                        SpecialInstr = 1'b1;
+                        SpecialInstrControl = 5'b01001; // Corresponds to SDIV
+                    end
                     default: begin // Undefined special instruction
-                        SpecialInstr = 1'b0; 
-                        ALUControl = 5'bxxxxx; // Undefined control
+                        SpecialInstr = 1'b0;
+                        SpecialInstrControl = 5'b00000; // NOP or undefined
                     end
                 endcase
             end
