@@ -4,11 +4,11 @@ module imem (
 	input [31:0] adr,
 	output [31:0] rd
 );
-	reg [31:0] RAM[0:256]; // x4 ⇒ 1024 bytes de ram
+	reg [31:0] RAM [63:0];
 	
 	initial begin
 		$readmemh("memfile.dat", RAM);
 	end
 	
-	assign rd = RAM[adr[12:2]];
+	assign rd = RAM[adr[31:2]];
 endmodule
