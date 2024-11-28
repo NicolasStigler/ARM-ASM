@@ -29,18 +29,18 @@ module hazardunit(
     // Forwarding logic
     always @(*) begin
         if (Check1_EM & RegWriteM) 
-            ForwardAE = 2'b10;
+            ForwardAE = 2'b10; // Forward from Memory stage
         else if (Check1_EW & RegWriteW) 
-            ForwardAE = 2'b01;
+            ForwardAE = 2'b01; // Forward from Writeback stage
         else 
-            ForwardAE = 2'b00;
+            ForwardAE = 2'b00; // No forwarding
 
         if (Check2_EM & RegWriteM) 
-            ForwardBE = 2'b10;
+            ForwardBE = 2'b10; // Forward from Memory stage
         else if (Check2_EW & RegWriteW) 
-            ForwardBE = 2'b01;
+            ForwardBE = 2'b01; // Forward from Writeback stage
         else 
-            ForwardBE = 2'b00;
+            ForwardBE = 2'b00; // No forwarding
     end
 
     // Detect hazard for load-use and base register update
@@ -55,6 +55,6 @@ module hazardunit(
     // Stall and flush logic
     assign StallF = ldrStallD | PCWPendingF | baseUpdateHazard;
     assign StallD = ldrStallD | baseUpdateHazard;
-    assign FlushD = PCWPendingF | PCSrcW | BranchTakenE | LinkWriteE; // Flush if branch/link occurs
-    assign FlushE = ldrStallD | BranchTakenE | LinkWriteE;            // Flush Execute stage on branch
+    assign FlushD = PCWPendingF | PCSrcW | branchHazard; // Flush if branch or link occurs
+    assign FlushE = ldrStallD | branchHazard;            // Flush Execute stage on branch or link
 endmodule

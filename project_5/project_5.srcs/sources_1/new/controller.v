@@ -18,7 +18,7 @@ module controller (
     output wire RegWriteM,
     output wire MemtoRegE,
     output wire PCWPendingF,
-    output wire LinkWriteE,        // New: Signal to write link register for BL
+    output wire LinkWriteE,        // Signal to write link register for BL
     input wire FlushE
 );
     // Control signals in the Decode stage
@@ -44,25 +44,25 @@ module controller (
         .ImmSrc(ImmSrcD),
         .RegSrc(RegSrcD),
         .ALUControl(ALUControlD),
-        .Link(LinkD) // New signal to indicate BL
+        .Link(LinkD) // Signal for BL (Branch with Link)
     );
 
     // Pass control signals to the Execute stage
-    flopenr #(11) regE ( // Increased width to include LinkD
+    flopenr #(12) regE ( // Increased width to include LinkD and PCSrcD
         .clk(clk),
         .reset(reset),
         .flush(FlushE),
         .d({PCSrcD, RegWriteD, MemWriteD, MemtoRegD, ALUSrcD, ALUControlD, FlagWriteD, LinkD}),
-        .q({PCSrcE, RegWriteE, MemWriteE, MemtoRegE, ALUSrcE, ALUControlE, FlagWriteE, LinkWriteE}) // LinkWriteE added
+        .q({PCSrcE, RegWriteE, MemWriteE, MemtoRegE, ALUSrcE, ALUControlE, FlagWriteE, LinkWriteE})
     );
 
     // Determine if the branch is taken
     condlogic cl(
-        .Cond(InstrD[31:28]),
-        .ALUFlags(ALUFlagsE),
-        .FlagW(FlagWriteE),
-        .PCS(PCSrcE),
-        .BranchTaken(BranchTakenE)
+        .Cond(InstrD[31:28]), // Condition field from instruction
+        .ALUFlags(ALUFlagsE), // Flags generated in Execute stage
+        .FlagW(FlagWriteE),   // Flag write enable from Execute stage
+        .PCS(PCSrcE),         // Determines if a branch is required
+        .BranchTaken(BranchTakenE) // Output: whether the branch is taken
     );
 
     // Pass signals to the Memory stage

@@ -4,6 +4,7 @@ module alu (
     input signed [31:0] a, b, // `a` is the base register (Rn), `b` is the offset
     input [4:0] ALUControl,
     input Saturated,
+    input CarryIn,           // Carry input for RRX
     output reg [31:0] Result,
     output wire [31:0] UpdatedBase, // New base register for post-indexed mode
     output wire [3:0] ALUFlags // Negative, Zero, Carry, Overflow
@@ -88,6 +89,19 @@ module alu (
             end
 
             5'b10101: Result = b; // MOV: Result = Operand2
+
+            // RRX (Rotate Right with Extend)
+            5'b10110: Result = {CarryIn, a[31:1]}; // Rotate right, inserting CarryIn
+
+            // CBZ (Compare and Branch if Zero)
+            5'b10111: begin
+                Result = (a == 32'b0) ? 32'b1 : 32'b0; // Set Result to 1 if zero
+            end
+
+            // CBNZ (Compare and Branch if Not Zero)
+            5'b11000: begin
+                Result = (a != 32'b0) ? 32'b1 : 32'b0; // Set Result to 1 if not zero
+            end
 
             default: Result = 32'b0; // NOP
         endcase

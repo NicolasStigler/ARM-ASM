@@ -15,6 +15,8 @@ module datapath (
     input RegWriteW,
     input UpdateBaseE,
     input LinkWriteE, // New signal to handle BL (write to Link Register R14)
+    input CBZ_E,      // Signal to enable CBZ comparison
+    input CBNZ_E,     // Signal to enable CBNZ comparison
     output [31:0] PCF,
     input [31:0] InstrF,
     output [31:0] InstrD,
@@ -36,10 +38,11 @@ module datapath (
     wire [31:0] LinkAddressE; // Return address for BL
     wire [3:0] RA1D, RA2D, RA1E, RA2E, WA3E, WA3M, WA3W;
     wire Check1_DE, Check2_DE;
+    wire BranchCondMetE; // Condition met for CBZ/CBNZ
 
     // Fetch Stage
     mux2 #(32) PCNextMux(PCPlus4F, ResultW, PCSrcW, PCNext1F); 
-    mux2 #(32) BranchMux(PCNext1F, BranchTargetE, BranchTakenE, PCNextF); 
+    mux2 #(32) BranchMux(PCNext1F, BranchTargetE, BranchCondMetE | BranchTakenE, PCNextF); 
     floper #(32) PCReg(clk, reset, ~StallF, PCNextF, PCF); 
     adder #(32) PCAdd(PCF, 32'b0100, PCPlus4F);
 
@@ -62,7 +65,10 @@ module datapath (
     mux3 #(32) bypass1Mux(rd1E, ResultW, ALUResultM, ForwardAE, SrcAE); 
     mux3 #(32) bypass2Mux(rd2E, ResultW, ALUResultM, ForwardBE, WriteDataE); 
     mux2 #(32) SecSrc(WriteDataE, ExtImmE, ALUSrcE, SrcBE); 
-    alu alu(SrcAE, SrcBE, ALUControlE, ALUResultE, UpdatedBaseE, ALUFlagsE); 
+    alu alu(SrcAE, SrcBE, ALUControlE, UpdatedBaseE, ALUResultE, ALUFlagsE); 
+
+    // CBZ/CBNZ Condition Check
+    assign BranchCondMetE = (CBZ_E & ALUFlagsE[2]) | (CBNZ_E & ~ALUFlagsE[2]); // Z flag
 
     // Calculate Branch Target
     adder #(32) BranchTargetCalc(PCPlus4F, {ExtImmE[29:0], 2'b00}, BranchTargetE);

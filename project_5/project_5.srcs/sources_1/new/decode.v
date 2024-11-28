@@ -62,6 +62,7 @@ module decode (
                     5'b00011: ALUControl = 5'b01100; // ASR
                     5'b00101: ALUControl = 5'b01101; // ROR
                     5'b11010: ALUControl = 5'b10101; // MOV
+                    5'b11100: ALUControl = 5'b10110; // RRX (Rotate Right with Extend)
                     default: ALUControl = 5'bxxxxx; // Undefined
                 endcase
                 FlagW = {Funct[0], Funct[0] & ((ALUControl == 5'b00000) | (ALUControl == 5'b00001))}; // Flags
@@ -89,6 +90,14 @@ module decode (
                     5'b11001: begin // BL (Branch with Link)
                         ALUControl = 5'bxxxxx; // No ALU operation needed
                         LinkWrite = 1'b1; // Write return address to R14
+                    end
+                    5'b11010: begin // CBZ (Compare and Branch if Zero)
+                        ALUControl = 5'b10111; // CBZ ALU operation
+                        LinkWrite = 1'b0;
+                    end
+                    5'b11011: begin // CBNZ (Compare and Branch if Not Zero)
+                        ALUControl = 5'b11000; // CBNZ ALU operation
+                        LinkWrite = 1'b0;
                     end
                 endcase
             end
