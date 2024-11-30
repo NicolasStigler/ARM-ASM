@@ -61,31 +61,30 @@ module decode (
 
         case (Op)
             2'b00: begin // Data Processing
-                case (Funct[4:0])
-                    5'b01000: ALUControl = 5'b00000; // ADD
-                    5'b00001: ALUControl = 5'b00001; // AND
-                    5'b00010: ALUControl = 5'b00010; // ORR
-                    5'b00011: ALUControl = 5'b00011; // EOR
-                    5'b00100: ALUControl = 5'b00100; // SUB
-                    5'b00101: ALUControl = 5'b00101; // RSB
-                    5'b00110: ALUControl = 5'b00110; // CMP
-                    5'b00111: ALUControl = 5'b00111; // TST
-                    5'b01110: begin // MOV and related instructions
+                case (Funct[4:1])
+                    4'b1000: ALUControl = 5'b00000; // ADD
+                    4'b0001: ALUControl = 5'b00001; // AND
+                    4'b0010: ALUControl = 5'b00010; // ORR
+                    4'b0011: ALUControl = 5'b00011; // EOR
+                    4'b0100: ALUControl = 5'b00100; // SUB
+                    4'b0101: ALUControl = 5'b00101; // RSB
+                    4'b0110: ALUControl = 5'b00110; // CMP
+                    4'b0111: ALUControl = 5'b00111; // TST
+                    4'b1110: begin // MOV
                         case (ShiftType)
-                            2'b00: ALUControl = 5'b01000; // LSL (Logical Shift Left)
-                            2'b01: ALUControl = 5'b01001; // LSR (Logical Shift Right)
-                            2'b10: ALUControl = 5'b01010; // ASR (Arithmetic Shift Right)
+                            2'b00: ALUControl = 5'b01000; // LSL
+                            2'b01: ALUControl = 5'b01001; // LSR
+                            2'b10: ALUControl = 5'b01010; // ASR
                             2'b11: begin
                                 if (ShiftAmount == 5'b00000)
-                                    ALUControl = 5'b01011; // RRX (Rotate Right with Extend)
+                                    ALUControl = 5'b01011; // RRX
                                 else
-                                    ALUControl = 5'b01100; // ROR (Rotate Right)
+                                    ALUControl = 5'b01100; // ROR
                             end
                             default: ALUControl = 5'bxxxxx; // Undefined shift
                         endcase
                     end
-                    5'b10000: ALUControl = 5'b01101; // MUL
-                    default: ALUControl = 5'bxxxxx; // Undefined
+                    default: ALUControl = 4'bxxxx; // Undefined
                 endcase
                 FlagW = {Funct[0], Funct[0] & ((ALUControl == 5'b00000) | (ALUControl == 5'b00100))}; // Flags
             end
