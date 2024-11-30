@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "mux2.v"
 
 module datapath (
     input clk,
@@ -101,7 +100,7 @@ module datapath (
     special special_hw(
         .a(SrcAE),
         .b(SrcBE),
-        .control(ALUControlE),
+        .SpecialInstrControl(ALUControlE),
         .result(SpecialResultE)
     );
 

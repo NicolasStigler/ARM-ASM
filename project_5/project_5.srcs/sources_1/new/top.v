@@ -1,7 +1,4 @@
 `timescale 1ns / 1ps
-`include "arm.v"
-`include "imem.v"
-`include "dmem.v"
 
 module top (
     input clk,

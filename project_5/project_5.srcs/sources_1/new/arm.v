@@ -1,7 +1,4 @@
 `timescale 1ns / 1ps
-`include "controller.v"
-`include "datapath.v"
-`include "hazardunit.v"
 
 module arm (
     input clk,                  // Clock signal

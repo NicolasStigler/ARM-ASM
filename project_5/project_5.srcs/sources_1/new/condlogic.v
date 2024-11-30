@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "condcheck.v"
 
 module condlogic(
 	input [3:0] Cond,
