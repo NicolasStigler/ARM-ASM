@@ -4,11 +4,11 @@
 `include "dmem.v"
 
 module top (
-	input clk,
-	input reset,
-	output [31:0] WriteDataM,
-	output [31:0] DataAdrM,
-	output MemWriteM
+	input wire clk,
+	input wire reset,
+	output wire [31:0] WriteDataM,
+	output wire [31:0] DataAdrM,
+	output wire MemWriteM
 );
 	wire [31:0] PCF;
 	wire [31:0] InstrF;
@@ -20,21 +20,21 @@ module top (
 		.PCF(PCF),
 		.InstrF(InstrF),
 		.MemWriteM(MemWriteM),
-		.DataAdrM(DataAdrM),
-		.WriteDataM(WriteData),
+		.ALUResultM(DataAdrM),
+		.WriteDataM(WriteDataM),
 		.ReadDataM(ReadDataM)
 	);
 	
 	imem imem(
-		.PCF(PCF),
-		.InstrF(InstrF)
+		.adr(PCF),
+		.rd(InstrF)
 	);
 	
 	dmem dmem(
 		.clk(clk),
-		.MemWriteM(MemWriteM),
-		.DataAdrM(DataAdrM),
-		.WriteDataM(WriteDataM),
-		.ReadDataM(ReadDataM)
+		.we(MemWriteM),
+		.adr(DataAdrM),
+		.wd(WriteDataM),
+		.rd(ReadDataM)
 	);
 endmodule
